@@ -21,14 +21,14 @@ const BlogSchema = new mongoose.Schema({
     max: 2000000
   },
   excerpt: {
-    type: String,
+    type: {},
     max: 1000
   },
   mtitle: {
     type: String
   },
   mdesc: {
-    type: {}
+    type: String
   },
   photo: {
     data: Buffer,
