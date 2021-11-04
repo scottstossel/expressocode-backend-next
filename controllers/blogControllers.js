@@ -172,7 +172,8 @@ exports.listAllBlogsCategoriesTags = (req, res) => {
 exports.read = (req, res) => {
     const slug = req.params.slug.toLowerCase();
     Blog.findOne({slug})
-    .populate('categories', '_id name slug')
+    // .select("-photo")
+        .populate('categories', '_id name slug')
         .populate('tags', '_id name slug')
         .populate('postedBy', '_id name username')
         .select('_id title body slug mtitle mdesc categories tags postedBy createdAt updatedAt')
@@ -223,11 +224,11 @@ exports.update = (req, res) => {
             oldBlog = _.merge(oldBlog, fields);
             oldBlog.slug = slugBeforeMerge;
 
-            const { body, mdesc, categories, tags } = fields;
+            const { body, categories, tags, mdesc } = fields;
 
             if (body) {
                 oldBlog.excerpt = smartTrim(body, 320, ' ', ' ...');
-                oldBlog.mdesc = stripHtml(body.substring(0, 160));
+                oldBlog.mdesc = stripHtml(body.substring(0, 160)).result;
             }
 
             if (categories) {
@@ -250,13 +251,30 @@ exports.update = (req, res) => {
 
             oldBlog.save((err, result) => {
                 if (err) {
+                    // console.log(err);
                     return res.status(400).json({
                         error: errorHandler(err)
                     });
                 }
+                // result.photo = undefined;
                 // result.photo = undefined;
                 res.json(result);
             });
         });
     });
 };
+
+exports.photo = (req, res) => {
+    const slug = req.params.slug.toLowerCase();
+    Blog.findOne({slug})
+    .select('photo')
+    .exec((err, blog) => {
+        if (err || !blog) {
+            return res.status(400).json({
+                error: errorHandler(err)
+            });
+        }
+        res.set('Content-Type', blog.photo.contentType);
+        return res.send(blog.photo.data);
+    }) 
+}
