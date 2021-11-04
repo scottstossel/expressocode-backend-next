@@ -9,6 +9,8 @@ const {errorHandler} = require('../helpers/dbErrorHandler');
 const fs = require('fs');
 const {smartTrim} = require('../helpers/blogHelper');
 
+//create blog 
+
 exports.create = (req, res) => {
   let form = new formidable.IncomingForm();
   form.keepExtensions = true;
@@ -102,6 +104,8 @@ exports.create = (req, res) => {
   });
 };
 
+//end create blog
+
 //list, listblogs..., read, remove, update
 exports.list = (req, res) => {
     Blog.find({})
@@ -194,6 +198,65 @@ exports.remove = (req, res) => {
         })
     })
 }
+
 exports.update = (req, res) => {
-    //
-}
+    const slug = req.params.slug.toLowerCase();
+
+    Blog.findOne({ slug }).exec((err, oldBlog) => {
+        if (err) {
+            return res.status(400).json({
+                error: errorHandler(err)
+            });
+        }
+
+        let form = new formidable.IncomingForm();
+        form.keepExtensions = true;
+
+        form.parse(req, (err, fields, files) => {
+            if (err) {
+                return res.status(400).json({
+                    error: 'Image could not upload'
+                });
+            }
+
+            let slugBeforeMerge = oldBlog.slug;
+            oldBlog = _.merge(oldBlog, fields);
+            oldBlog.slug = slugBeforeMerge;
+
+            const { body, mdesc, categories, tags } = fields;
+
+            if (body) {
+                oldBlog.excerpt = smartTrim(body, 320, ' ', ' ...');
+                oldBlog.mdesc = stripHtml(body.substring(0, 160));
+            }
+
+            if (categories) {
+                oldBlog.categories = categories.split(',');
+            }
+
+            if (tags) {
+                oldBlog.tags = tags.split(',');
+            }
+
+            if (files.photo) {
+                if (files.photo.size > 10000000) {
+                    return res.status(400).json({
+                        error: 'Image should be less then 1mb in size'
+                    });
+                }
+                oldBlog.photo.data = fs.readFileSync(files.photo.path);
+                oldBlog.photo.contentType = files.photo.type;
+            }
+
+            oldBlog.save((err, result) => {
+                if (err) {
+                    return res.status(400).json({
+                        error: errorHandler(err)
+                    });
+                }
+                // result.photo = undefined;
+                res.json(result);
+            });
+        });
+    });
+};
